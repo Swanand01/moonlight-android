@@ -5,6 +5,9 @@ on:
     branches: [moonlight-noir]
   workflow_dispatch:
 
+permissions:
+  contents: write   # publish the APK as a GitHub Release
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -38,3 +41,17 @@ jobs:
           name: artemis-debug-apk
           path: app/build/outputs/apk/**/*.apk
           if-no-files-found: error
+
+      # Downloadable straight from a phone: github.com/<owner>/moonlight-android/releases
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          APK=$(find app/build/outputs/apk -name '*.apk' | head -1)
+          SHORT_SHA=${GITHUB_SHA::7}
+          cp "$APK" "artemis-cloud-debug-${SHORT_SHA}.apk"
+          gh release create "build-${GITHUB_RUN_NUMBER}" "artemis-cloud-debug-${SHORT_SHA}.apk" \
+            --target "$GITHUB_SHA" \
+            --title "Debug build ${GITHUB_RUN_NUMBER} (${SHORT_SHA})" \
+            --notes "Debug APK built from ${SHORT_SHA}. Installs alongside official Artemis (app id com.limelight.noirdebug)." \
+            --latest
