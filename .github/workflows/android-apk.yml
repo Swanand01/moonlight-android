@@ -47,7 +47,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          APK=$(find app/build/outputs/apk -name '*.apk' | head -1)
+          # The build splits APKs per ABI; phones need arm64-v8a.
+          APK=$(find app/build/outputs/apk -name '*arm64-v8a*.apk' | head -1)
+          test -n "$APK" || { find app/build/outputs/apk -name '*.apk'; echo "no arm64-v8a APK" >&2; exit 1; }
           SHORT_SHA=${GITHUB_SHA::7}
           cp "$APK" "artemis-cloud-debug-${SHORT_SHA}.apk"
           gh release create "build-${GITHUB_RUN_NUMBER}" "artemis-cloud-debug-${SHORT_SHA}.apk" \
