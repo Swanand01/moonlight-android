@@ -381,7 +381,9 @@ public class AddComputerManually extends AppCompatActivity {
 
             builder.setPositiveButton(getString(R.string.proceed), (dialog, which) -> {
                 dialog.dismiss();
-                finish();
+                // Don't finish() here: onDestroy() interrupts the add thread, which aborts
+                // the add on any non-instant (e.g. internet) connection. doAddPc() finishes
+                // the activity itself once the PC is added, or shows the error if it fails.
                 computersToAdd.add(server + '?' + query);
             });
 
