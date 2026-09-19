@@ -19,10 +19,12 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - uses: android-actions/setup-android@v3
-
+      # ubuntu-latest ships the Android SDK at $ANDROID_HOME; just add the pinned NDK.
       - name: Install NDK
-        run: sdkmanager "ndk;27.0.12077973"
+        run: |
+          SDKMANAGER=$(ls -d "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager | sort -V | tail -1)
+          yes | "$SDKMANAGER" --licenses > /dev/null
+          "$SDKMANAGER" "ndk;27.0.12077973"
 
       - uses: gradle/actions/setup-gradle@v4
 
