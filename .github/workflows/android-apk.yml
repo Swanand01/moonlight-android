@@ -1,0 +1,77 @@
+name: Build APK
+
+on:
+  push:
+    branches: [stable]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # publish the APK as a GitHub Release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      # ubuntu-latest ships the Android SDK at $ANDROID_HOME; just add the pinned NDK.
+      - name: Install NDK
+        run: |
+          SDKMANAGER=$(ls -d "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager | sort -V | tail -1)
+          yes | "$SDKMANAGER" --licenses > /dev/null
+          "$SDKMANAGER" "ndk;27.0.12077973"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build APK
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleNonRoot_gameDebug --no-daemon --stacktrace
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # v20.2.6 builds one APK for all CPU types; newer code splits per ABI, where
+          # phones need arm64-v8a.
+          APK=$(find app/build/outputs/apk -name '*arm64-v8a*.apk' | head -1)
+          [ -n "$APK" ] || APK=$(find app/build/outputs/apk -name '*.apk' | head -1)
+          test -n "$APK" || { echo "no APK produced" >&2; exit 1; }
+
+          BASE=$(grep -oE "versionName '[^']+'" app/build.gradle | head -1 | cut -d"'" -f2)
+          BASE=${BASE:-20.2.6}
+          VERSION="${BASE}-onetap.${GITHUB_RUN_NUMBER}"
+          cp "$APK" "artemis-${VERSION}.apk"
+          SIZE=$(du -h "artemis-${VERSION}.apk" | cut -f1)
+
+          cat > notes.md <<NOTES
+          Artemis $BASE with one-tap pairing for cloud gaming.
+
+          **What's different from official Artemis $BASE**
+
+          Tapping an \`art://\` pairing link adds the PC and pairs it in one step, even over
+          the internet. Upstream closes the "Add PC" screen before the add finishes, which
+          cancels it on any connection slower than a LAN, so nothing happens.
+
+          **Install**
+
+          Download \`artemis-${VERSION}.apk\` ($SIZE) below and open it on your Android phone.
+          Allow installs from your browser when asked. It installs alongside official
+          Artemis, so both can be kept.
+
+          Built from \`stable\` (Artemis $BASE) - commit ${GITHUB_SHA::7}.
+          NOTES
+
+          gh release create "v${VERSION}" "artemis-${VERSION}.apk" \
+            --target "$GITHUB_SHA" \
+            --title "Artemis $BASE - one-tap pairing (build ${GITHUB_RUN_NUMBER})" \
+            --notes-file notes.md \
+            --latest
