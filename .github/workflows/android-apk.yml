@@ -48,7 +48,7 @@ jobs:
 
           BASE=$(grep -oE "versionName '[^']+'" app/build.gradle | head -1 | cut -d"'" -f2)
           BASE=${BASE:-20.2.6}
-          VERSION="${BASE}-onetap.${GITHUB_RUN_NUMBER}"
+          VERSION="${BASE}-build-${GITHUB_RUN_NUMBER}"
           cp "$APK" "artemis-${VERSION}.apk"
           SIZE=$(du -h "artemis-${VERSION}.apk" | cut -f1)
 
@@ -72,6 +72,6 @@ jobs:
 
           gh release create "v${VERSION}" "artemis-${VERSION}.apk" \
             --target "$GITHUB_SHA" \
-            --title "Artemis $BASE - one-tap pairing (build ${GITHUB_RUN_NUMBER})" \
+            --title "Artemis $BASE (build ${GITHUB_RUN_NUMBER})" \
             --notes-file notes.md \
             --latest
