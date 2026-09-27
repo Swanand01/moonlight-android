@@ -48,9 +48,8 @@ jobs:
 
           BASE=$(grep -oE "versionName '[^']+'" app/build.gradle | head -1 | cut -d"'" -f2)
           BASE=${BASE:-20.2.6}
-          VERSION="${BASE}-build-${GITHUB_RUN_NUMBER}"
-          cp "$APK" "artemis-${VERSION}.apk"
-          SIZE=$(du -h "artemis-${VERSION}.apk" | cut -f1)
+          cp "$APK" "artemis-${BASE}.apk"
+          SIZE=$(du -h "artemis-${BASE}.apk" | cut -f1)
 
           cat > notes.md <<NOTES
           Artemis $BASE with one-tap pairing for cloud gaming.
@@ -63,15 +62,17 @@ jobs:
 
           **Install**
 
-          Download \`artemis-${VERSION}.apk\` ($SIZE) below and open it on your Android phone.
+          Download \`artemis-${BASE}.apk\` ($SIZE) below and open it on your Android phone.
           Allow installs from your browser when asked. It installs alongside official
           Artemis, so both can be kept.
 
           Built from \`stable\` (Artemis $BASE) - commit ${GITHUB_SHA::7}.
           NOTES
 
-          gh release create "v${VERSION}" "artemis-${VERSION}.apk" \
+          # A rebuild of the same version replaces its release instead of piling up.
+          gh release delete "v${BASE}" --yes --cleanup-tag 2>/dev/null || true
+          gh release create "v${BASE}" "artemis-${BASE}.apk" \
             --target "$GITHUB_SHA" \
-            --title "Artemis $BASE (build ${GITHUB_RUN_NUMBER})" \
+            --title "Artemis $BASE" \
             --notes-file notes.md \
             --latest
